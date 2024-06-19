@@ -47,4 +47,10 @@ router.get('/validate-token', verifyToken, (req:express.Request, res: express.Re
     res.status(200).send({userId: req.userId})
 })
 
+router.post('/log-out',(req:express.Request, res: express.Response)=>{
+    res.cookie('auth_token',"",{
+        maxAge:0
+    })
+    res.status(200).json({message: "Log out successfully!"})
+})
 export default router;
