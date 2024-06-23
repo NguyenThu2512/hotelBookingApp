@@ -1,6 +1,7 @@
 import express, {Request, Response} from 'express';
-import Hotel, { HotelType } from '../models/hotel';
+import Hotel, { BookingType, HotelType } from '../models/hotel';
 import { param, validationResult } from 'express-validator';
+import verifyToken from '../middleware/auth';
 
 const router= express.Router();
 
@@ -12,6 +13,17 @@ export type HotelSearchResponse={
         pages:number;
     }
 }
+
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const hotels = await Hotel.find().sort("-lastUpdated");
+    res.json(hotels);
+  } catch (error) {
+    console.log("error", error);
+    res.status(500).json({ message: "Error fetching hotels" });
+  }
+});
+
 router.get('/search', async(req:Request, res:Response) => {
     try {
         const query = constructSearchQuery(req.query);
@@ -50,23 +62,53 @@ router.get('/search', async(req:Request, res:Response) => {
 
 
 router.get("/:id",
-    [param("id").notEmpty().withMessage("Hotel ID is required")], async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-  
-      const id = req.params.id.toString();
-  
-      try {
-        const hotel = await Hotel.findById(id);
-        res.json(hotel);
-      } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "Error fetching hotel" });
-      }
+  [param("id").notEmpty().withMessage("Hotel ID is required")], async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-  );
+
+    const id = req.params.id.toString();
+
+    try {
+      const hotel = await Hotel.findById(id);
+      res.json(hotel);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: "Error fetching hotel" });
+    }
+  }
+);
+router.post("/:hotelId/bookings", verifyToken, async (req: Request, res: Response) => {
+  const hotelId = req.params.hotelId
+  const bookingData= req.body
+  try {
+    const newBooking: BookingType = {
+      ...req.body,
+      userId: req.userId,
+    };
+    console.log(newBooking);
+
+    const hotel = await Hotel.findOneAndUpdate(
+      { _id:hotelId },
+      {
+        $push: { bookings: newBooking },
+      }
+    );
+
+    if (!hotel) {
+      return res.status(400).json({ message: "hotel not found" });
+    }
+
+    await hotel.save();
+    res.status(200).json(hotel);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "something went wrong" });
+  }
+});
+
+
 
 const constructSearchQuery = (queryParams: any) => {
     let constructedQuery: any = {};
