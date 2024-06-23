@@ -5,7 +5,7 @@ import ManageHotelForm from "../form/ManageHotelForm";
 
 const EditHotel = () => {
     const {hotelId}= useParams();
-    const {data: hotelData}= useQuery("fetchHotelById",()=>apiClient.fetchHotelDataById(hotelId), {
+    const {data: hotelData}= useQuery("fetchHotelById",()=>apiClient.fetchHotelDataById(hotelId || ""), {
         enabled: !!hotelId, 
         // if hotelId null or undefined, the query will not done
     } )
